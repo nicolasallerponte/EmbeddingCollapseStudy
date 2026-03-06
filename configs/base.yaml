@@ -1,0 +1,27 @@
+model:
+  backbone: resnet18
+  projection_dim: 128
+
+training:
+  epochs: 200
+  batch_size: 256
+  optimizer: adam
+  lr: 3e-4
+  weight_decay: 1e-4
+
+contrastive:
+  temperature: 0.1
+
+dataset:
+  name: cifar10        # cifar10 | stl10
+  root: data/
+  num_workers: 4
+
+logging:
+  wandb: true
+  project: embedding-collapse-study
+  log_every_n_epochs: 10
+
+outputs:
+  checkpoint_dir: outputs/checkpoints/
+  figures_dir: outputs/figures/

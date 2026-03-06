@@ -1,0 +1,6 @@
+defaults:
+  - base
+
+# Run: python src/train.py --multirun training.batch_size=128,256,512,1024
+training:
+  batch_size: 256

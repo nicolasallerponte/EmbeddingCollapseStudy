@@ -1,0 +1,58 @@
+\documentclass{article}
+\usepackage[preprint]{neurips_2024}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\title{Geometry of Contrastive Representation Learning:\\
+Uniformity, Alignment, and Dimensional Collapse under\\
+Varying Temperature and Batch Size}
+
+\author{
+  Nicolás Aller Ponte \\
+  Escola Politécnica Superior \\
+  Universidade da Coruña \\
+  \texttt{n.allerponte@udc.es}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+% TODO
+\end{abstract}
+
+\section{Introduction}
+% TODO
+
+\section{Background}
+
+\subsection{InfoNCE Loss}
+\begin{equation}
+  \mathcal{L} = -\log \frac{\exp(\text{sim}(z_i, z_j)/\tau)}
+    {\sum_{k \neq i} \exp(\text{sim}(z_i, z_k)/\tau)}
+\end{equation}
+
+\subsection{Uniformity and Alignment}
+% TODO: Wang & Isola (2020)
+
+\subsection{Dimensional Collapse}
+% TODO: Hua et al. (2021), effective rank
+
+\section{Experimental Setup}
+% TODO
+
+\section{Results}
+% TODO: tables, figures
+
+\section{Discussion}
+% TODO
+
+\section{Conclusion}
+% TODO
+
+\bibliography{references}
+\bibliographystyle{plainnat}
+
+\end{document}
