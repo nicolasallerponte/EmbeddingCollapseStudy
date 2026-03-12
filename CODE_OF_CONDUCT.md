@@ -25,7 +25,7 @@ Examples of unacceptable behavior:
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported by contacting the maintainer at **n.allerponte@udc.es**. All
+reported by contacting the maintainer at **nicolas.aller@udc.es**. All
 complaints will be reviewed and investigated promptly and fairly.
 
 ## Attribution
