@@ -127,5 +127,5 @@ EmbeddingCollapseStudy/
 
 ## Author
 
-**Nicolás Aller Ponte** — CS student @ Universidade da Coruña  
+**Nicolás Aller Ponte** — DS student
 [GitHub](https://github.com/nicolasallerponte) · [LinkedIn](https://linkedin.com/in/nicolasallerponte)
