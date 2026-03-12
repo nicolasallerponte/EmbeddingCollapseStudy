@@ -16,7 +16,7 @@ services. However, if you discover a security issue (e.g., a dependency with
 a known CVE), please report it responsibly:
 
 1. **Do not** open a public GitHub issue for security vulnerabilities
-2. Email the maintainer directly at **n.allerponte@udc.es**
+2. Email the maintainer directly at **nicolas.aller@udc.es**
 3. Include a description of the vulnerability and steps to reproduce
 
 You can expect a response within 7 days. If the issue is confirmed, a fix
