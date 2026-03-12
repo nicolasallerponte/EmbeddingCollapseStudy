@@ -1,9 +1,10 @@
 \documentclass{article}
-\usepackage[preprint]{neurips_2024}
+\usepackage[margin=1in]{geometry}
 \usepackage{amsmath, amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{hyperref}
+\usepackage{float}
 
 \title{Geometry of Contrastive Representation Learning:\\
 Uniformity, Alignment, and Dimensional Collapse under\\
@@ -11,48 +12,336 @@ Varying Temperature and Batch Size}
 
 \author{
   Nicolás Aller Ponte \\
-  Escola Politécnica Superior \\
   Universidade da Coruña \\
-  \texttt{n.allerponte@udc.es}
+  \texttt{nicolas.aller@udc.es}
 }
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-% TODO
+We empirically study how two key hyperparameters of contrastive self-supervised 
+learning --- InfoNCE temperature $\tau$ and negative batch size --- shape the 
+geometry of the learned embedding space. Training SimCLR with a ResNet-18 backbone 
+on CIFAR-10, we measure uniformity, alignment, and dimensional collapse (via 
+effective rank) across five temperature values ($\tau \in \{0.07, 0.1, 0.2, 0.5, 
+1.0\}$) and four batch sizes ($N \in \{128, 256, 512, 1024\}$). We find that low 
+temperatures produce highly uniform representations with high effective rank but 
+poor alignment, while high temperatures cause severe dimensional collapse --- 
+reducing the effective rank from 88 to 12. Batch size independently controls 
+representation richness: doubling the batch size from 128 to 1024 increases 
+effective rank from 76 to 99 with minimal impact on uniformity. Notably, the 
+configuration with the highest effective rank ($\tau=0.07$) does not achieve the 
+best downstream accuracy, suggesting that geometric quality and task performance 
+are not perfectly aligned. These results provide empirical grounding for 
+hyperparameter selection in contrastive learning pipelines.
 \end{abstract}
 
 \section{Introduction}
-% TODO
+
+Contrastive self-supervised learning has emerged as a dominant paradigm for 
+learning visual representations without labels~\cite{chen2020simple}. At its 
+core, these methods optimize the InfoNCE loss~\cite{chen2020simple}, which 
+encourages representations of augmented views of the same image to be similar 
+(\emph{alignment}) while pushing apart representations of different images 
+(\emph{uniformity})~\cite{wang2020understanding}.
+
+Despite their empirical success, the effect of key hyperparameters on the 
+\emph{geometry} of the learned embedding space remains underexplored. The 
+temperature $\tau$ controls the sharpness of the softmax distribution over 
+negatives, and the batch size determines how many negatives are available per 
+update. Both are known to affect downstream accuracy, but their relationship 
+to geometric properties such as dimensional collapse is less understood.
+
+Dimensional collapse --- the phenomenon where learned representations span only 
+a small subspace of the available embedding dimensions --- has been identified 
+as a key failure mode in self-supervised learning~\cite{hua2021feature}. A 
+collapsed representation discards potentially useful information, limiting 
+transferability to downstream tasks.
+
+In this work, we conduct a controlled empirical study of how $\tau$ and batch 
+size affect the geometry of SimCLR representations on CIFAR-10. We track 
+uniformity, alignment, and effective rank throughout training, and evaluate 
+downstream quality via linear probe accuracy. Our main findings are:
+
+\begin{itemize}
+    \item Low $\tau$ produces high uniformity and high effective rank, but 
+    at the cost of poor alignment between positive pairs.
+    \item High $\tau$ causes severe dimensional collapse, reducing effective 
+    rank from 88 to 12.
+    \item Larger batch sizes independently increase effective rank with 
+    minimal effect on uniformity.
+    \item The best downstream accuracy is achieved at $\tau=0.2$, not at 
+    the lowest $\tau$, revealing a non-trivial tradeoff between geometric 
+    quality and task performance.
+\end{itemize}
 
 \section{Background}
 
 \subsection{InfoNCE Loss}
+
+Given a batch of $N$ images, SimCLR~\cite{chen2020simple} generates two augmented 
+views of each image and encodes them through a backbone network followed by a 
+projection head, yielding normalized embeddings $z_i, z_j \in \mathbb{S}^{d-1}$. 
+The NT-Xent (InfoNCE) loss for a positive pair $(i, j)$ is:
+
 \begin{equation}
   \mathcal{L} = -\log \frac{\exp(\text{sim}(z_i, z_j)/\tau)}
     {\sum_{k \neq i} \exp(\text{sim}(z_i, z_k)/\tau)}
 \end{equation}
 
-\subsection{Uniformity and Alignment}
-% TODO: Wang & Isola (2020)
+where $\text{sim}(u, v) = u^\top v / \|u\|\|v\|$ is the cosine similarity and 
+$\tau > 0$ is the temperature hyperparameter. Lower $\tau$ sharpens the 
+distribution over negatives, making the loss focus on hard negatives.
 
-\subsection{Dimensional Collapse}
-% TODO: Hua et al. (2021), effective rank
+\subsection{Uniformity and Alignment}
+
+Wang and Isola~\cite{wang2020understanding} decompose representation quality 
+into two complementary properties. \textbf{Alignment} measures how close 
+positive pairs are on the unit hypersphere:
+
+\begin{equation}
+  \mathcal{L}_\text{align} = \mathbb{E}_{(x,y)\sim p_\text{pos}} 
+  \left[\|f(x) - f(y)\|^2\right]
+\end{equation}
+
+\textbf{Uniformity} measures how evenly representations are distributed on 
+the hypersphere, using a Gaussian kernel:
+
+\begin{equation}
+  \mathcal{L}_\text{unif} = \log\, \mathbb{E}_{x,y \overset{\text{i.i.d.}}
+  {\sim} p_\text{data}} \left[e^{-2\|f(x)-f(y)\|^2}\right]
+\end{equation}
+
+Good representations should minimize both: aligned positive pairs and 
+uniformly distributed embeddings. These two objectives are in tension --- 
+perfect alignment would collapse all representations to a single point.
+
+\subsection{Dimensional Collapse and Effective Rank}
+
+Dimensional collapse occurs when learned representations span only a small 
+subspace of $\mathbb{R}^d$~\cite{hua2021feature}. We quantify this via the 
+\textbf{effective rank}~\cite{roy2007effective}, defined as the exponential 
+of the Shannon entropy of the normalized singular value distribution of the 
+embedding matrix $Z \in \mathbb{R}^{N \times d}$:
+
+\begin{equation}
+  \text{erank}(Z) = \exp\left(-\sum_i p_i \log p_i\right), 
+  \quad p_i = \frac{\sigma_i}{\sum_j \sigma_j}
+\end{equation}
+
+where $\sigma_i$ are the singular values of $Z$. A higher effective rank 
+indicates a richer, less collapsed representation space, with maximum value 
+$d$ (the embedding dimension).
+
 
 \section{Experimental Setup}
-% TODO
+
+\subsection{Model and Training}
+
+We train SimCLR~\cite{chen2020simple} with a ResNet-18 backbone and a 
+two-layer MLP projection head (512 $\rightarrow$ 512 $\rightarrow$ 128) on 
+CIFAR-10 (50,000 training images, 10 classes). All models are trained for 
+200 epochs using the Adam optimizer with learning rate $3 \times 10^{-4}$, 
+weight decay $10^{-4}$, and cosine annealing schedule.
+
+The data augmentation pipeline follows the standard SimCLR protocol: random 
+resized crop (scale 0.2--1.0), random horizontal flip, color jitter 
+(brightness, contrast, saturation, hue), and random grayscale conversion.
+
+\subsection{Hyperparameter Sweeps}
+
+We conduct two independent sweeps:
+
+\begin{itemize}
+    \item \textbf{Temperature sweep:} $\tau \in \{0.07, 0.1, 0.2, 0.5, 1.0\}$ 
+    with fixed batch size $N=256$.
+    \item \textbf{Batch size sweep:} $N \in \{128, 256, 512, 1024\}$ with 
+    fixed temperature $\tau=0.1$.
+\end{itemize}
+
+\subsection{Evaluation Protocol}
+
+Geometry metrics are computed every 10 epochs on the projection head embeddings 
+$z$, using 10 batches of training data. We compute:
+
+\begin{itemize}
+    \item \textbf{Uniformity} and \textbf{alignment} as defined in 
+    Section~\ref{sec:background}.
+    \item \textbf{Effective rank} of the $N \times 128$ embedding matrix.
+    \item \textbf{Top-5 normalized singular values} to characterize the 
+    shape of dimensional collapse.
+\end{itemize}
+
+Downstream performance is evaluated via \textbf{linear probe}: a logistic 
+regression classifier (C=0.1) trained on frozen backbone features extracted 
+from the full CIFAR-10 training set, evaluated on the test set.
+
+\subsection{Implementation}
+
+All experiments were run on a single NVIDIA P100 GPU via Kaggle. Code is 
+available at \url{https://github.com/nicolasallerponte/EmbeddingCollapseStudy}.
 
 \section{Results}
-% TODO: tables, figures
+
+\subsection{Effect of Temperature on Embedding Geometry}
+
+Table~\ref{tab:tau_sweep} summarizes the geometry metrics and downstream 
+accuracy at epoch 200 across the temperature sweep.
+
+\begin{table}[h]
+\centering
+\caption{Temperature sweep results at epoch 200 (batch size $N=256$).}
+\label{tab:tau_sweep}
+\begin{tabular}{lrrrrr}
+\toprule
+$\tau$ & Loss & Uniformity $\downarrow$ & Alignment $\downarrow$ & Eff. Rank $\uparrow$ & Test Acc $\uparrow$ \\
+\midrule
+0.07 & 0.5125 & -3.8517 & 0.5555 & 88.11 & 71.31\% \\
+0.1  & 0.8513 & -3.8558 & 0.4776 & 89.13 & 73.30\% \\
+0.2  & 2.6183 & -3.7732 & 0.3711 & 67.08 & 75.33\% \\
+0.5  & 4.6402 & -3.4154 & 0.2752 & 27.83 & 74.19\% \\
+1.0  & 5.4077 & -2.9750 & 0.2277 & 12.22 & 71.37\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+As temperature increases, alignment improves monotonically while uniformity 
+degrades. The effective rank drops dramatically --- from 89 at $\tau=0.1$ to 
+12 at $\tau=1.0$ --- indicating severe dimensional collapse at high temperatures. 
+Figure~\ref{fig:erank_tau} illustrates this evolution throughout training.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../outputs/figures/effective_rank.png}
+\caption{Effective rank over training for different temperatures. Higher 
+$\tau$ leads to progressively more collapsed representations.}
+\label{fig:erank_tau}
+\end{figure}
+
+The singular value distributions at epoch 200 (Figure~\ref{fig:sv}) confirm 
+this finding: low-temperature models distribute energy across all 128 dimensions, 
+while $\tau=1.0$ concentrates energy in fewer than 10 dimensions.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../outputs/figures/singular_values.png}
+\caption{Normalized singular value distributions at epoch 200. Low $\tau$ 
+produces flat distributions (no collapse); high $\tau$ concentrates energy 
+in few dimensions.}
+\label{fig:sv}
+\end{figure}
+
+Figure~\ref{fig:scatter} shows the uniformity-alignment tradeoff at the 
+final epoch. The Pareto frontier moves from bottom-left (high $\tau$, good 
+alignment, poor uniformity) to top-left (low $\tau$, poor alignment, good 
+uniformity).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.45\textwidth]{../outputs/figures/unif_align_scatter.png}
+\caption{Uniformity vs.\ alignment at epoch 200. Each point corresponds to 
+a different temperature value.}
+\label{fig:scatter}
+\end{figure}
+
+\subsection{Effect of Batch Size on Embedding Geometry}
+
+Table~\ref{tab:bs_sweep} shows results for the batch size sweep at fixed 
+$\tau=0.1$.
+
+\begin{table}[h]
+\centering
+\caption{Batch size sweep results at epoch 200 (temperature $\tau=0.1$).}
+\label{tab:bs_sweep}
+\begin{tabular}{lrrrr}
+\toprule
+Batch size & Loss & Uniformity $\downarrow$ & Alignment $\downarrow$ & Eff. Rank $\uparrow$ \\
+\midrule
+128  & 0.5503 & -3.8301 & 0.4696 & 75.73 \\
+256  & 0.8513 & -3.8558 & 0.4776 & 89.13 \\
+512  & 1.2831 & -3.8693 & 0.5102 & 96.94 \\
+1024 & 1.8472 & -3.8709 & 0.5460 & 99.19 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Larger batch sizes consistently increase the effective rank, from 76 at 
+$N=128$ to 99 at $N=1024$. Notably, uniformity remains nearly constant 
+across all batch sizes (~$-3.83$ to $-3.87$), while alignment degrades 
+slightly with larger batches. This suggests that batch size primarily 
+controls the \emph{dimensionality} of the representation, not its 
+distribution on the hypersphere.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../outputs/figures/batchsize_sweep.png}
+\caption{Effective rank and uniformity over training for different batch 
+sizes at $\tau=0.1$.}
+\label{fig:bs}
+\end{figure}
+
+\subsection{Geometry vs.\ Downstream Performance}
+
+A key finding is that geometric quality does not directly predict downstream 
+accuracy. The configuration with the highest effective rank ($\tau=0.07$, 
+erank=88) achieves only 71.3\% test accuracy, while $\tau=0.2$ (erank=67) 
+achieves the best accuracy of 75.3\%. This suggests that moderate collapse 
+may act as an implicit regularizer, discarding noise and retaining 
+task-relevant structure.
 
 \section{Discussion}
-% TODO
+
+Our results reveal two distinct mechanisms by which hyperparameters shape 
+contrastive representations.
+
+\textbf{Temperature controls the uniformity-alignment tradeoff.} Low $\tau$ 
+sharpens the softmax over negatives, effectively treating all negatives as 
+hard negatives. This forces the model to spread representations uniformly 
+across the hypersphere, maximizing effective rank. However, this comes at 
+the cost of alignment --- positive pairs are not pulled close enough, 
+degrading downstream transferability. High $\tau$ has the opposite effect: 
+the loss becomes insensitive to individual negatives, allowing representations 
+to collapse into a low-dimensional subspace while achieving good alignment.
+
+\textbf{Batch size controls representation dimensionality.} More negatives 
+per update provide a richer contrastive signal, forcing the model to maintain 
+diverse representations across more dimensions. Crucially, this effect is 
+largely orthogonal to uniformity --- the hyperspherical distribution remains 
+stable while the effective rank grows. This suggests that batch size and 
+temperature act on different geometric axes of the embedding space.
+
+\textbf{The geometry-performance gap.} Perhaps the most practically relevant 
+finding is that the best downstream accuracy ($\tau=0.2$, 75.3\%) does not 
+coincide with the best geometry ($\tau=0.1$, erank=89). Representations 
+with very high effective rank may encode too much low-level variation, while 
+moderate collapse may implicitly filter out task-irrelevant dimensions. This 
+challenges the assumption that geometric quality metrics are sufficient 
+proxies for representation quality, and suggests that both perspectives are 
+necessary for a complete evaluation.
+
+\textbf{Limitations.} This study is limited to CIFAR-10 with a ResNet-18 
+backbone and a single projection dimension of 128. The batch size sweep 
+fixes $\tau=0.1$, leaving the interaction between both hyperparameters 
+unexplored. Future work should extend these findings to larger datasets 
+(e.g., STL-10, ImageNet-100), higher-capacity backbones, and joint sweeps 
+over both hyperparameters simultaneously.
 
 \section{Conclusion}
-% TODO
+
+We presented an empirical study of how InfoNCE temperature and batch size 
+affect the geometry of contrastive representations. Our key findings are: 
+(1) temperature governs the uniformity-alignment tradeoff and is the primary 
+driver of dimensional collapse; (2) batch size independently controls 
+effective rank with minimal effect on hyperspherical uniformity; and (3) 
+geometric quality metrics are imperfect proxies for downstream performance, 
+with the best accuracy achieved at intermediate temperature rather than at 
+the geometric optimum. These results provide practical guidance for 
+hyperparameter selection in contrastive learning and motivate further 
+investigation into the relationship between representation geometry and 
+downstream transferability.
 
 \bibliography{references}
-\bibliographystyle{plainnat}
+\bibliographystyle{plain}
 
 \end{document}
